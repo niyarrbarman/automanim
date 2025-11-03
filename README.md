@@ -2,9 +2,9 @@
 
 chat to make manim vids. preview. save. that’s it.
 
-demo:
+demo: assets/demo.mp4
 
-<video src="assets/demo.mp4" controls width="1920"></video>
+<video src="./assets/demo.mp4" controls width="1920"></video>
 
 requirements:
 - python 3.9 (manim requires below 3.10)
