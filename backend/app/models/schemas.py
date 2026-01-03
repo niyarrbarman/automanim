@@ -10,6 +10,8 @@ class VideoSettings(BaseModel):
 class GenerateRequest(BaseModel):
     session_id: str
     prompt: str
+    parent_code: Optional[str] = None
+    context_summary: Optional[str] = None
 
 class GenerateResponse(BaseModel):
     code: Union[str, int]  # code string or -1

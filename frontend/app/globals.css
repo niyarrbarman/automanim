@@ -579,15 +579,14 @@ kbd {
   display: flex;
   flex: 1;
   min-height: 0;
-  overflow: hidden;
 }
 
 .dock-panel {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  overflow: hidden;
   min-width: 0;
+  overflow: hidden;
 }
 
 .dock-panel--code {
@@ -735,9 +734,12 @@ kbd {
 
 /* Code/Logs content */
 .dock-content {
-  flex: 1;
-  overflow: auto;
+  flex: 1 1 0;
+  overflow-x: auto;
+  overflow-y: scroll;
+  height: 0;
   padding: var(--spacing-md) var(--spacing-lg);
+  padding-bottom: 48px;
   font-family: var(--font-mono);
   font-size: 13px;
   line-height: 1.6;
@@ -822,4 +824,324 @@ kbd {
 .copy-feedback--visible {
   opacity: 1;
   transform: translateY(0);
+}
+
+/* ========== MULTI-SCENE / PROJECT UI ========== */
+/* New Scene Button (Top Bar) */
+.btn-new-scene {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  margin-right: 16px;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-new-scene:hover {
+  background: var(--bg-panel);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.btn-new-scene svg {
+  opacity: 0.7;
+}
+
+/* History Tab List (Left Panel - Projects) */
+.tab-list {
+  display: flex;
+  flex-direction: column;
+  margin-top: var(--spacing-xl);
+  margin-bottom: var(--spacing-xl);
+  flex-shrink: 0;
+}
+
+.tab-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-sm);
+}
+
+.tab-list-items {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.tab-item-wrapper {
+  width: 100%;
+}
+
+.tab-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: 8px var(--spacing-md);
+  width: 100%;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  text-align: left;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s;
+  position: relative;
+}
+
+.tab-item:hover {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+}
+
+.tab-item--active {
+  background: var(--bg-elevated);
+  border-color: var(--border-subtle);
+  color: var(--text-primary);
+}
+
+.tab-status {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.tab-status--rendering {
+  background-color: var(--status-rendering);
+  box-shadow: 0 0 8px --status-rendering;
+}
+
+.tab-status--ready {
+  background-color: var(--status-ready);
+}
+
+.tab-status--error {
+  background-color: var(--status-error);
+}
+
+.tab-status--idle {
+  background-color: var(--text-muted);
+  opacity: 0.3;
+}
+
+.tab-item-title {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tab-item-count {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.tab-delete-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  margin-left: 8px;
+  color: var(--text-muted);
+  border-radius: var(--radius-sm);
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s, color 0.15s;
+}
+
+.tab-item:hover .tab-delete-btn {
+  opacity: 1;
+}
+
+.tab-delete-btn:hover {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--status-error);
+}
+
+.tab-empty {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-style: italic;
+  padding: 4px 0;
+}
+
+/* Scene Node Tree (Left Panel - Scene History) */
+.scene-tree-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.node-tree {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-right: 4px;
+}
+
+.node-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  width: 100%;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-align: left;
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+
+.node-item:hover {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+}
+
+.node-item--active {
+  background: rgba(74, 222, 128, 0.1);
+  color: var(--accent);
+}
+
+.node-item--active::after {
+  content: '';
+  position: absolute;
+  right: 6px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+/* Tree connector lines */
+.node-connector {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translate(-100%, -50%);
+  width: 12px;
+  height: 12px;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.node-status {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background-color: var(--text-muted);
+  flex-shrink: 0;
+  opacity: 0.5;
+}
+
+.node-status--rendering {
+  background-color: var(--status-rendering);
+  opacity: 1;
+}
+
+.node-status--ready {
+  background-color: var(--status-ready);
+  opacity: 1;
+}
+
+.node-status--error {
+  background-color: var(--status-error);
+  opacity: 1;
+}
+
+.node-prompt {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.node-time {
+  font-size: 9px;
+  color: var(--text-muted);
+  opacity: 0.5;
+  margin-left: auto;
+}
+
+.node-tree-empty {
+  padding: 20px 0;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.node-tree-empty-hint {
+  margin-top: 8px;
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+.node-delete-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-left: 8px;
+  color: var(--text-muted);
+  border-radius: var(--radius-sm);
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s, color 0.15s;
+}
+
+.node-item:hover .node-delete-btn {
+  opacity: 1;
+}
+
+.node-delete-btn:hover {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--status-error);
+}
+
+.node-retry-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-left: 4px;
+  color: var(--text-muted);
+  border-radius: var(--radius-sm);
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s, color 0.15s;
+}
+
+.node-item:hover .node-retry-btn {
+  opacity: 1;
+}
+
+.node-retry-btn:hover {
+  background: rgba(74, 222, 128, 0.15);
+  color: var(--accent);
+}
+
+/* Hide original history section if present */
+.history-section {
+  display: none;
 }

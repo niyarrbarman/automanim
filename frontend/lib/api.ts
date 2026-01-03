@@ -1,4 +1,4 @@
-export async function generateCode(baseUrl: string, body: { session_id: string; prompt: string; }) {
+export async function generateCode(baseUrl: string, body: { session_id: string; prompt: string; parent_code?: string; context_summary?: string; }) {
   const res = await fetch(`${baseUrl}/api/generate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
