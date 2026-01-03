@@ -146,17 +146,15 @@ body {
 
 /* Dropdown chips */
 .dropdown-chip {
-  display: flex;
+  position: relative;
+  display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
   font-size: 12px;
   font-weight: 500;
   color: var(--text-secondary);
   background: transparent;
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
-  cursor: pointer;
   transition: border-color 0.15s, color 0.15s;
 }
 
@@ -165,8 +163,7 @@ body {
   color: var(--text-primary);
 }
 
-.dropdown-chip:focus {
-  outline: none;
+.dropdown-chip:focus-within {
   border-color: var(--accent);
 }
 
@@ -177,7 +174,9 @@ body {
   color: inherit;
   font: inherit;
   cursor: pointer;
-  padding-right: 14px;
+  padding: 6px 24px 6px 10px;
+  margin: 0;
+  min-width: 60px;
 }
 
 .dropdown-chip select:focus {
@@ -186,12 +185,17 @@ body {
 
 .dropdown-chip::after {
   content: '';
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
   width: 0;
   height: 0;
   border-left: 4px solid transparent;
   border-right: 4px solid transparent;
   border-top: 4px solid currentColor;
   opacity: 0.5;
+  pointer-events: none;
 }
 
 /* Main content area - takes 60% */

@@ -27,6 +27,7 @@ const RESOLUTION_PRESETS: Record<string, { width: number; height: number; qualit
   "480p": { width: 854, height: 480, quality: "low" },
   "720p": { width: 1280, height: 720, quality: "medium" },
   "1080p": { width: 1920, height: 1080, quality: "high" },
+  "4K": { width: 3840, height: 2160, quality: "ultra" },
 };
 
 const FPS_OPTIONS = [24, 30, 60];
@@ -40,12 +41,7 @@ export default function HomePage() {
   const [prompt, setPrompt] = useState("");
   const [status, setStatus] = useState<Status>("ready");
   const [wrapCode, setWrapCode] = useState(false);
-  const [fontSize, setFontSize] = useState(() => {
-    if (typeof window !== "undefined") {
-      return parseInt(localStorage.getItem("automanim-fontsize") || "13", 10);
-    }
-    return 13;
-  });
+  const [fontSize, setFontSize] = useState(13);
   const [copyFeedback, setCopyFeedback] = useState(false);
 
   // Data State
@@ -56,42 +52,37 @@ export default function HomePage() {
   const [currentVideoUrl, setCurrentVideoUrl] = useState("");
   const [currentSceneName, setCurrentSceneName] = useState("GeneratedScene.py");
 
-  // Settings State
-  const [resolution, setResolution] = useState(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("automanim-resolution") || "480p";
-    }
-    return "480p";
-  });
-  const [fps, setFps] = useState(() => {
-    if (typeof window !== "undefined") {
-      return parseInt(localStorage.getItem("automanim-fps") || "30", 10);
-    }
-    return 30;
-  });
+  // Settings State - start with defaults to avoid hydration mismatch
+  const [resolution, setResolution] = useState("480p");
+  const [fps, setFps] = useState(30);
 
   // Refs
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const dockRef = useRef<HTMLDivElement>(null);
 
   // ========== EFFECTS ==========
-  // Persist settings
+  // Load settings from localStorage after mount (avoids hydration mismatch)
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem("automanim-resolution", resolution);
-    }
+    const savedResolution = localStorage.getItem("automanim-resolution");
+    const savedFps = localStorage.getItem("automanim-fps");
+    const savedFontSize = localStorage.getItem("automanim-fontsize");
+
+    if (savedResolution) setResolution(savedResolution);
+    if (savedFps) setFps(parseInt(savedFps, 10));
+    if (savedFontSize) setFontSize(parseInt(savedFontSize, 10));
+  }, []);
+
+  // Persist settings to localStorage
+  useEffect(() => {
+    localStorage.setItem("automanim-resolution", resolution);
   }, [resolution]);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem("automanim-fps", fps.toString());
-    }
+    localStorage.setItem("automanim-fps", fps.toString());
   }, [fps]);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem("automanim-fontsize", fontSize.toString());
-    }
+    localStorage.setItem("automanim-fontsize", fontSize.toString());
   }, [fontSize]);
 
   // Build settings object
@@ -199,15 +190,23 @@ export default function HomePage() {
     }
   };
 
-  const handleDownloadVideo = () => {
+  const handleDownloadVideo = async () => {
     if (!currentVideoUrl) return;
-    const fullUrl = `${backendUrl}${currentVideoUrl}`;
-    const a = document.createElement("a");
-    a.href = fullUrl;
-    a.download = currentSceneName.replace(".py", ".mp4");
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    try {
+      const fullUrl = `${backendUrl}${currentVideoUrl}`;
+      const response = await fetch(fullUrl);
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = currentSceneName.replace(".py", ".mp4");
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error("Failed to download video:", e);
+    }
   };
 
   const handleRenderOnly = async () => {
