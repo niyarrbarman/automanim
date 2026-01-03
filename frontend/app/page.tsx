@@ -39,8 +39,6 @@ export default function HomePage() {
   // UI State
   const [prompt, setPrompt] = useState("");
   const [status, setStatus] = useState<Status>("ready");
-  const [activeTab, setActiveTab] = useState<"code" | "logs">("code");
-  const [dockHeight, setDockHeight] = useState(220);
   const [wrapCode, setWrapCode] = useState(false);
   const [fontSize, setFontSize] = useState(() => {
     if (typeof window !== "undefined") {
@@ -75,7 +73,6 @@ export default function HomePage() {
   // Refs
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const dockRef = useRef<HTMLDivElement>(null);
-  const resizeRef = useRef<{ startY: number; startHeight: number } | null>(null);
 
   // ========== EFFECTS ==========
   // Persist settings
@@ -153,21 +150,71 @@ export default function HomePage() {
       setHistory(prev => [newEntry, ...prev]);
       setActiveRunId(newEntry.id);
       setPrompt("");
-      setStatus("ready");
-      setActiveTab("code");
+
+      // Auto-render after generation
+      setCurrentLogs(prev => prev + "Starting render...\n");
+
+      const settings = getVideoSettings();
+      const rendered = await renderVideo(backendUrl, {
+        session_id: sessionId,
+        code: newCode,
+        scene_class: sceneName.replace(".py", "") || undefined,
+        settings,
+        preview: false,
+      });
+
+      if (rendered.log) {
+        setCurrentLogs(rendered.log);
+      }
+
+      if (rendered.success && rendered.video_url) {
+        const videoUrl = withCacheBust(rendered.video_url);
+        setCurrentVideoUrl(videoUrl);
+        setStatus("ready");
+
+        // Update history entry with video
+        setHistory(prev => prev.map(h =>
+          h.id === newEntry.id
+            ? { ...h, videoUrl, logs: rendered.log || h.logs }
+            : h
+        ));
+      } else {
+        // Render failed - show error in logs
+        setStatus("error");
+        const errorLog = rendered.log || "Render failed. Check your code for errors.";
+        setCurrentLogs(errorLog);
+
+        // Update history entry with error logs
+        setHistory(prev => prev.map(h =>
+          h.id === newEntry.id
+            ? { ...h, logs: errorLog }
+            : h
+        ));
+      }
 
     } catch (e: any) {
       setStatus("error");
-      setCurrentLogs(`Error: ${e?.message || "Failed to generate"}`);
+      const errorMsg = `Error: ${e?.message || "Failed to generate"}`;
+      setCurrentLogs(errorMsg);
     }
   };
 
-  const handleRender = async () => {
+  const handleDownloadVideo = () => {
+    if (!currentVideoUrl) return;
+    const fullUrl = `${backendUrl}${currentVideoUrl}`;
+    const a = document.createElement("a");
+    a.href = fullUrl;
+    a.download = currentSceneName.replace(".py", ".mp4");
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
+  const handleRenderOnly = async () => {
     if (!currentCode || status === "rendering") return;
 
     setStatus("rendering");
     setCurrentLogs("Starting render...\n");
-    setActiveTab("logs");
 
     try {
       const settings = getVideoSettings();
@@ -245,27 +292,6 @@ export default function HomePage() {
       handleGenerate();
     }
   };
-
-  // Dock resize handlers
-  const handleResizeStart = (e: React.MouseEvent) => {
-    e.preventDefault();
-    resizeRef.current = { startY: e.clientY, startHeight: dockHeight };
-    document.addEventListener("mousemove", handleResizeMove);
-    document.addEventListener("mouseup", handleResizeEnd);
-  };
-
-  const handleResizeMove = useCallback((e: MouseEvent) => {
-    if (!resizeRef.current) return;
-    const delta = resizeRef.current.startY - e.clientY;
-    const newHeight = Math.max(120, Math.min(500, resizeRef.current.startHeight + delta));
-    setDockHeight(newHeight);
-  }, []);
-
-  const handleResizeEnd = useCallback(() => {
-    resizeRef.current = null;
-    document.removeEventListener("mousemove", handleResizeMove);
-    document.removeEventListener("mouseup", handleResizeEnd);
-  }, [handleResizeMove]);
 
   // ========== RENDER HELPERS ==========
   const renderLogs = (text: string) => {
@@ -427,88 +453,72 @@ export default function HomePage() {
 
             <button
               className="btn-render"
-              onClick={handleRender}
-              disabled={!currentCode || status === "rendering"}
+              onClick={handleDownloadVideo}
+              disabled={!currentVideoUrl || status === "rendering"}
             >
-              Render &amp; Save Video
+              Save Video
             </button>
           </div>
         </section>
       </main>
 
-      {/* Bottom Dock */}
-      <div
-        className="dock"
-        ref={dockRef}
-        style={{ height: dockHeight }}
-      >
-        <div
-          className="dock-resize-handle"
-          onMouseDown={handleResizeStart}
-          role="separator"
-          aria-orientation="horizontal"
-        />
-        <div className="dock-header">
-          <div className="dock-tabs">
-            <button
-              className={`dock-tab ${activeTab === "code" ? "dock-tab--active" : ""}`}
-              onClick={() => setActiveTab("code")}
-            >
-              Code
-            </button>
-            <button
-              className={`dock-tab ${activeTab === "logs" ? "dock-tab--active" : ""}`}
-              onClick={() => setActiveTab("logs")}
-            >
-              Logs
-            </button>
-          </div>
-
-          {activeTab === "code" && (
-            <div className="dock-controls">
-              <button className="dock-btn" onClick={handleCopyCode} disabled={!currentCode}>
-                Copy
-              </button>
-              <button className="dock-btn" onClick={handleDownloadCode} disabled={!currentCode}>
-                Download
-              </button>
-              <button
-                className={`dock-btn ${wrapCode ? "dock-btn--active" : ""}`}
-                onClick={() => setWrapCode(!wrapCode)}
-              >
-                Wrap
-              </button>
-              <div className="dock-btn-group">
-                <button
-                  className="dock-btn"
-                  onClick={() => setFontSize(Math.max(10, fontSize - 1))}
-                >
-                  A-
+      {/* Bottom Dock - Fixed 40% */}
+      <div className="dock" ref={dockRef}>
+        <div className="dock-split">
+          {/* Code Panel */}
+          <div className="dock-panel dock-panel--code">
+            <div className="dock-panel-header">
+              <span className="dock-panel-title">CODE</span>
+              <div className="dock-controls">
+                <button className="dock-btn" onClick={handleCopyCode} disabled={!currentCode}>
+                  Copy
+                </button>
+                <button className="dock-btn" onClick={handleDownloadCode} disabled={!currentCode}>
+                  Download
                 </button>
                 <button
-                  className="dock-btn"
-                  onClick={() => setFontSize(Math.min(20, fontSize + 1))}
+                  className={`dock-btn ${wrapCode ? "dock-btn--active" : ""}`}
+                  onClick={() => setWrapCode(!wrapCode)}
                 >
-                  A+
+                  Wrap
                 </button>
+                <div className="dock-btn-group">
+                  <button
+                    className="dock-btn"
+                    onClick={() => setFontSize(Math.max(10, fontSize - 1))}
+                  >
+                    A-
+                  </button>
+                  <button
+                    className="dock-btn"
+                    onClick={() => setFontSize(Math.min(20, fontSize + 1))}
+                  >
+                    A+
+                  </button>
+                </div>
               </div>
             </div>
-          )}
-        </div>
+            <div
+              className={`dock-content ${!wrapCode ? "dock-content--nowrap" : ""}`}
+              style={{ fontSize }}
+            >
+              {currentCode ? (
+                <pre style={{ margin: 0 }}>{currentCode}</pre>
+              ) : (
+                <span className="dock-content-placeholder">// Generated code will appear here...</span>
+              )}
+            </div>
+          </div>
 
-        <div
-          className={`dock-content ${!wrapCode && activeTab === "code" ? "dock-content--nowrap" : ""}`}
-          style={{ fontSize: activeTab === "code" ? fontSize : undefined }}
-        >
-          {activeTab === "code" ? (
-            currentCode ? (
-              <pre style={{ margin: 0 }}>{currentCode}</pre>
-            ) : (
-              <span className="dock-content-placeholder">// Generated code will appear here...</span>
-            )
-          ) : (
-            renderLogs(currentLogs)
-          )}
+          {/* Logs Panel */}
+          <div className="dock-panel dock-panel--logs">
+            <div className="dock-panel-header">
+              <span className="dock-panel-title">LOGS</span>
+            </div>
+            <div className="dock-content">
+              {renderLogs(currentLogs)}
+            </div>
+          </div>
         </div>
       </div>
 

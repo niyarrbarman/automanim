@@ -194,10 +194,10 @@ body {
   opacity: 0.5;
 }
 
-/* Main content area */
+/* Main content area - takes 60% */
 .main-content {
   display: flex;
-  flex: 1;
+  flex: 0 0 60%;
   min-height: 0;
   overflow: hidden;
 }
@@ -211,6 +211,7 @@ body {
   background: var(--bg-panel);
   border-right: 1px solid var(--border-subtle);
   overflow: hidden;
+  min-width: 0;
 }
 
 /* Right Panel */
@@ -221,6 +222,7 @@ body {
   padding: var(--spacing-lg);
   background: var(--bg-base);
   overflow: hidden;
+  min-width: 0;
 }
 
 /* Section labels */
@@ -559,13 +561,59 @@ kbd {
   cursor: not-allowed;
 }
 
-/* ========== BOTTOM DOCK ========== */
+/* ========== BOTTOM DOCK - Fixed 40% height ========== */
 .dock {
   display: flex;
   flex-direction: column;
-  min-height: var(--dock-min-height);
+  flex: 0 0 40%;
   background: var(--bg-panel);
   border-top: 1px solid var(--border-subtle);
+}
+
+/* Split layout for code and logs - uses same ratios as main panels */
+.dock-split {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.dock-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.dock-panel--code {
+  flex: var(--left-panel-ratio);
+  /* Same as left panel */
+  border-right: 1px solid var(--border-subtle);
+  background: var(--bg-panel);
+}
+
+.dock-panel--logs {
+  flex: var(--right-panel-ratio);
+  /* Same as right panel */
+  background: var(--bg-base);
+}
+
+.dock-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-sm) var(--spacing-lg);
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+
+.dock-panel-title {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent);
 }
 
 .dock-resize-handle {
