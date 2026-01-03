@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     LLM_PROVIDER: str = Field("ollama", description="ollama|transformers|llama_cpp|http")
     # Ollama
     OLLAMA_HOST: str = Field("http://localhost:11434", description="Ollama server host")
-    OLLAMA_MODEL: str = Field("gemma3:latest", description="Ollama model name")
+    OLLAMA_MODEL: str = Field("gpt-oss:120b-cloud", description="Ollama model name")
     LLM_MODEL_ID: str = Field(
         "prithivMLmods/Pyxidis-Manim-CodeGen-1.7B",
         description="Hugging Face model id for transformers",

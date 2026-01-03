@@ -19,7 +19,7 @@ uvicorn app.main:app --app-dir backend --reload
 ```bash
 cd frontend
 npm i
-export NEXT_PUBLIC_BACKEND_URL=http://localhost:8000
+export NEXT_PUBLIC_BACKEND_URL=http://localhost:8001
 npm run dev
 ```
 
