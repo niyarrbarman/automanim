@@ -204,6 +204,7 @@ cython_debug/
 # Project-specific
 frontend/.next/
 frontend/node_modules/
+!frontend/lib/
 backend/.venv/
 media/
 .cursorignore
