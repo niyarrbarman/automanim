@@ -206,7 +206,6 @@ frontend/.next/
 frontend/node_modules/
 backend/.venv/
 media/
-models/
 .cursorignore
 .cursorindexingignore
 
