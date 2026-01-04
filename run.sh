@@ -9,6 +9,15 @@ cleanup() {
 
 trap cleanup SIGINT SIGTERM
 
+cat << "EOF"
+    ___         __        __  ___            _
+   /   | __  __/ /_____  /  |/  /___ _____  (_)___ ___
+  / /| |/ / / / __/ __ \/ /|_/ / __ `/ __ \/ / __ `__ \
+ / ___ / /_/ / /_/ /_/ / /  / / /_/ / / / / / / / / / /
+/_/  |_\__,_/\__/\____/_/  /_/\__,_/_/ /_/_/_/ /_/ /_/
+
+EOF
+
 echo "Starting AutoManim..."
 
 # Try to activate virtual environment
