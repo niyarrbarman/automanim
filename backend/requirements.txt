@@ -3,11 +3,6 @@ uvicorn[standard]==0.30.6
 pydantic==2.9.2
 pydantic-settings==2.6.1
 aiohttp==3.10.10
-transformers>=4.46.2
-accelerate==1.0.1
-torch==2.4.1
-safetensors==0.4.5
-sentencepiece==0.2.0
 manim==0.19.0
 python-multipart==0.0.9
 ollama>=0.3.0

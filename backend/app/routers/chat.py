@@ -5,7 +5,7 @@ from ..core.session_store import SessionStore
 from ..utils.code_utils import sanitize_code, extract_scene_class
 
 router = APIRouter(tags=["chat"])
-llm_service = LLMService()
+from ..services.llm import llm_service
 store = SessionStore.get()
 
 SYSTEM_PROMPT = (
@@ -57,6 +57,8 @@ async def generate(req: GenerateRequest):
         # But we must include the current user prompt!
         history = [{"role": "user", "content": req.prompt}]
         
+        print(f"[SANITY CHECK] Using model: {llm_service._ollama_model or llm_service._model_id}")
+        
         raw_output = await llm_service.generate_code(
             system_prompt=system_instruction,
             user_prompt=req.prompt,
@@ -68,6 +70,8 @@ async def generate(req: GenerateRequest):
         # Add current user message to session
         store.append_message(req.session_id, "user", req.prompt)
         history = store.get_messages(req.session_id)
+
+        print(f"[SANITY CHECK] Using model: {llm_service._ollama_model or llm_service._model_id}")
 
         raw_output = await llm_service.generate_code(
             system_prompt=SYSTEM_PROMPT,

@@ -1,0 +1,305 @@
+/* ========== MOBILE LAYOUT ========== */
+
+/* Utilities */
+.mobile-only {
+    display: none !important;
+}
+
+
+
+/* Header */
+.btn-hamburger {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    cursor: pointer;
+    padding: 4px;
+}
+
+/* Bottom Navigation */
+.mobile-bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    background: var(--bg-panel);
+    border-top: 1px solid var(--border-subtle);
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    z-index: 50;
+    padding-bottom: env(safe-area-inset-bottom);
+}
+
+.nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 10px;
+    font-weight: 500;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+}
+
+.nav-item svg {
+    opacity: 0.7;
+}
+
+.nav-item.active {
+    color: var(--accent);
+}
+
+.nav-item.active svg {
+    opacity: 1;
+}
+
+/* Side Drawer */
+.side-drawer-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(2px);
+    z-index: 99;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+}
+
+.side-drawer-backdrop.open {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.side-drawer {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 280px;
+    background: var(--bg-base);
+    border-right: 1px solid var(--border-subtle);
+    z-index: 100;
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    display: flex;
+    flex-direction: column;
+}
+
+.side-drawer.open {
+    transform: translateX(0);
+}
+
+.drawer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--spacing-lg);
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.drawer-title {
+    font-family: var(--font-mono);
+    font-weight: 500;
+    font-size: 14px;
+}
+
+.btn-close {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 20px;
+    cursor: pointer;
+}
+
+.drawer-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--spacing-lg);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xl);
+}
+
+.drawer-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.drawer-section label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+
+.drawer-section select {
+    width: 100%;
+    padding: 8px;
+    background: var(--bg-input);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-primary);
+    border-radius: var(--radius-sm);
+}
+
+/* Mobile Media Query */
+@media (max-width: 768px) {
+
+    /* Utility for hiding on mobile (used by main-content) */
+    .mobile-only {
+        display: flex !important;
+    }
+
+    .desktop-only {
+        display: none !important;
+    }
+
+    .mobile-hidden {
+        display: none !important;
+    }
+
+    /* Main layout override for Studio view */
+    /* Main layout override for Studio view */
+    .main-content {
+        flex-direction: column;
+        overflow: hidden !important;
+        /* Disable parent scroll to allow child flex centering */
+        height: 100% !important;
+        flex: 1 1 auto !important;
+        display: flex !important;
+    }
+
+    /* Hide panels by default on mobile */
+    .left-panel,
+    .right-panel,
+    .dock {
+        display: none;
+        width: 100%;
+        border-right: none;
+        border-top: none;
+        padding-bottom: 0;
+    }
+
+    /* Specific panel overrides */
+    /* Chat Panel */
+    .left-panel.mobile-visible {
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: center !important;
+        /* Center content vertically */
+        height: 100% !important;
+        width: 100% !important;
+        flex: 1 1 auto !important;
+        padding-bottom: 60px;
+        /* Space for bottom nav */
+        gap: 16px;
+    }
+
+    /* Add extra spacing for Scene History section */
+    .scene-tree-section {
+        margin-top: 32px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        max-height: 40vh;
+        overflow-y: auto;
+        /* Allow internal scroll for history if too long */
+    }
+
+    /* Preview Panel */
+    .right-panel.mobile-visible {
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: center !important;
+        /* Center content vertically */
+        height: 100% !important;
+        width: 100% !important;
+        flex: 1 1 auto !important;
+        padding: var(--spacing-md);
+        background: var(--bg-base);
+        padding-bottom: 80px;
+        /* Space for bottom nav */
+        border-top: 1px solid var(--border-subtle);
+    }
+
+    .right-panel.mobile-visible .preview-container {
+        flex: 0 0 auto !important;
+        /* Don't stretch vertically */
+        background: transparent !important;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .right-panel.mobile-visible .preview-frame {
+        flex: none !important;
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        /* Keep landscape */
+        min-height: 0 !important;
+        background: var(--bg-panel);
+        border-radius: var(--radius-md);
+        margin: 0 !important;
+        /* Clean up margins */
+    }
+
+    .right-panel.mobile-visible .btn-render {
+        margin-top: 0 !important;
+        border-radius: var(--radius-md) !important;
+    }
+
+    /* Dock Panel (Console) */
+    .dock.mobile-visible {
+        display: flex;
+        flex-direction: column;
+        flex: 1 1 auto !important;
+        height: auto !important;
+        overflow: hidden;
+        padding-bottom: 60px;
+        position: fixed;
+        top: 60px;
+        bottom: 60px;
+        left: 0;
+        right: 0;
+        z-index: 40;
+    }
+
+    /* Adjust Dock layout for mobile */
+    .dock-split {
+        flex-direction: column;
+        height: 100%;
+        width: 100%;
+        display: flex;
+    }
+
+    .dock-panel--code,
+    .dock-panel--logs {
+        flex: 1 1 50% !important;
+        /* Force 50/50 split */
+        min-height: 0;
+        /* Crucial for scrolling */
+        width: 100%;
+        height: 50%;
+        /* Explicit height */
+        overflow: hidden;
+    }
+
+    /* Mobile Top Bar */
+    .top-bar {
+        padding: 0 var(--spacing-md);
+    }
+
+    .brand span {
+        font-size: 18px;
+    }
+}

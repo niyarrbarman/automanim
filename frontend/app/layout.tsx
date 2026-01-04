@@ -2,7 +2,7 @@ import './globals.css';
 import React from 'react';
 
 export const metadata = {
-  title: 'AutoManim',
+  title: 'automanim',
   description: 'Chat to generate and preview Manim scenes',
 };
 

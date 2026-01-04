@@ -1,8 +1,10 @@
 "use client";
 import React, { useEffect, useRef, useState, useCallback } from "react";
+import Image from "next/image";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { generateCode, renderVideo, setSettings } from "../lib/api";
+import "./mobile.css";
 import HistoryTabList from "./components/HistoryTabList";
 import SceneNodeTree from "./components/SceneNodeTree";
 import {
@@ -26,6 +28,16 @@ const RESOLUTION_PRESETS: Record<string, { width: number; height: number; qualit
 
 const FPS_OPTIONS = [24, 30, 60];
 
+const MODELS = [
+  "gpt-oss:120b-cloud",
+  "gemini-3-flash-preview:cloud",
+  "qwen3-coder:480b-cloud",
+  "qwen3-next:80b-cloud",
+  "gemma3:27b-cloud",
+  "glm-4.7:cloud",
+  "ministral-3:14b-cloud",
+];
+
 type Status = "ready" | "rendering" | "error";
 
 // ========== MAIN COMPONENT ==========
@@ -36,13 +48,16 @@ export default function HomePage() {
   // UI State
   const [prompt, setPrompt] = useState("");
   const [status, setStatus] = useState<Status>("ready");
-  const [wrapCode, setWrapCode] = useState(false);
   const [fontSize, setFontSize] = useState(13);
   const [copyFeedback, setCopyFeedback] = useState(false);
 
   // Multi-tab project state
   const [tabs, setTabs] = useState<HistoryTab[]>([]);
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
+
+  // Mobile State
+  const [activeMobileTab, setActiveMobileTab] = useState<"chat" | "preview" | "console">("chat");
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Current display state (derived from active tab/node)
   const [currentCode, setCurrentCode] = useState("");
@@ -53,6 +68,7 @@ export default function HomePage() {
   // Settings State
   const [resolution, setResolution] = useState("480p");
   const [fps, setFps] = useState(30);
+  const [selectedModel, setSelectedModel] = useState("gpt-oss:120b-cloud");
 
   // Refs
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -101,12 +117,24 @@ export default function HomePage() {
     if (savedResolution) setResolution(savedResolution);
     if (savedFps) setFps(parseInt(savedFps, 10));
     if (savedFontSize) setFontSize(parseInt(savedFontSize, 10));
+
+    const savedModel = localStorage.getItem("automanim-model");
+    if (savedModel && MODELS.includes(savedModel)) {
+      setSelectedModel(savedModel);
+    }
   }, []);
 
   // Save tabs to localStorage on change
   useEffect(() => {
-    if (tabs.length > 0) {
+    // Check if there are any tabs with nodes
+    const hasNodesInAnyTab = tabs.some(tab => tab.nodes.length > 0);
+
+    if (tabs.length > 0 && hasNodesInAnyTab) {
       localStorage.setItem("automanim-tabs", JSON.stringify(tabs));
+    } else {
+      // Clear tabs if there are no nodes in any tab
+      localStorage.removeItem("automanim-tabs");
+      localStorage.removeItem("automanim-active-tab");
     }
   }, [tabs]);
 
@@ -119,6 +147,17 @@ export default function HomePage() {
   useEffect(() => {
     localStorage.setItem("automanim-resolution", resolution);
   }, [resolution]);
+
+  useEffect(() => {
+    localStorage.setItem("automanim-model", selectedModel);
+  }, [selectedModel]);
+
+  // Mobile: Auto-switch - DISABLED for merged view
+  useEffect(() => {
+    if (status === "rendering") {
+      setActiveMobileTab("preview");
+    }
+  }, [status]);
 
   useEffect(() => {
     localStorage.setItem("automanim-fps", fps.toString());
@@ -325,6 +364,65 @@ export default function HomePage() {
       }
     }, 100);
   }, [getActiveTab, setPrompt]);
+
+  const handleNodeEdit = useCallback((nodeId: string) => {
+    const tab = getActiveTab();
+    if (!tab) return;
+
+    // Find the node to edit
+    const nodeToEdit = tab.nodes.find(n => n.id === nodeId);
+    if (!nodeToEdit) return;
+
+    // Delete all descendants of this node (but keep the node itself for now)
+    const descendantIds = new Set(getDescendantIds(tab.nodes, nodeId));
+    descendantIds.delete(nodeId); // Keep the node we're editing
+
+    // Get the parent node for context
+    const parentNode = nodeToEdit.parentId
+      ? tab.nodes.find(n => n.id === nodeToEdit.parentId) || null
+      : null;
+
+    // Remove descendants and the node itself (we'll create a new one when user submits)
+    setTabs(prev => prev.map(t => {
+      if (t.id === tab.id) {
+        const remainingNodes = t.nodes.filter(n => !descendantIds.has(n.id) && n.id !== nodeId);
+        return {
+          ...t,
+          nodes: remainingNodes,
+          activeNodeId: parentNode?.id || null,
+          updatedAt: new Date(),
+        };
+      }
+      return t;
+    }));
+
+    // Populate the prompt for editing
+    setPrompt(nodeToEdit.prompt);
+
+    // Focus the textarea (optional, for better UX)
+    setTimeout(() => {
+      textareaRef.current?.focus();
+    }, 100);
+  }, [getActiveTab, setPrompt]);
+
+  const handleModelChange = useCallback(async (model: string) => {
+    setSelectedModel(model);
+
+    try {
+      const response = await fetch(`${backendUrl}/api/models/select`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ model }),
+      });
+
+      if (!response.ok) {
+        console.error("Failed to select model");
+      }
+    } catch (error) {
+      console.error("Error selecting model:", error);
+    }
+  }, [backendUrl]);
+
 
   // Update a node in a specific tab
   const updateNodeInTab = useCallback((tabId: string, nodeId: string, updates: Partial<SceneNode>) => {
@@ -628,24 +726,39 @@ export default function HomePage() {
     <div className="app-container">
       {/* Top Bar */}
       <header className="top-bar">
+
         <div className="top-bar-left">
-          <button className="btn-new-scene" onClick={handleCreateNewTab}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <line x1="12" y1="5" x2="12" y2="19" />
-              <line x1="5" y1="12" x2="19" y2="12" />
-            </svg>
-            New Scene
-          </button>
-          <span className="brand">
-            <span className="brand-bracket">[</span> <span className="brand-bracket">]</span> automanim
-          </span>
+          <div className="brand" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <button className="btn-hamburger mobile-only" onClick={() => setIsSidebarOpen(true)}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="3" y1="12" x2="21" y2="12" />
+                <line x1="3" y1="6" x2="21" y2="6" />
+                <line x1="3" y1="18" x2="21" y2="18" />
+              </svg>
+            </button>
+            <Image src="/navbar.png" alt="AutoManim Logo" width={64} height={64} style={{ objectFit: 'contain' }} />
+            <span>automanim</span>
+          </div>
+
+
+        </div>
+        <div className="top-bar-right">
           <span className={getStatusPillClass()}>
             <span className="status-dot" />
             {getStatusText()}
           </span>
-        </div>
-        <div className="top-bar-right">
-          <div className="dropdown-chip">
+          <div className="dropdown-chip desktop-only">
+            <select
+              value={selectedModel}
+              onChange={(e) => handleModelChange(e.target.value)}
+              aria-label="Model"
+            >
+              {MODELS.map(model => (
+                <option key={model} value={model}>{model}</option>
+              ))}
+            </select>
+          </div>
+          <div className="dropdown-chip desktop-only">
             <select
               value={resolution}
               onChange={(e) => setResolution(e.target.value)}
@@ -656,7 +769,7 @@ export default function HomePage() {
               ))}
             </select>
           </div>
-          <div className="dropdown-chip">
+          <div className="dropdown-chip desktop-only">
             <select
               value={fps}
               onChange={(e) => setFps(parseInt(e.target.value, 10))}
@@ -667,13 +780,20 @@ export default function HomePage() {
               ))}
             </select>
           </div>
+          <button className="btn-new-scene desktop-only" onClick={handleCreateNewTab}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            New Scene
+          </button>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="main-content">
-        {/* Left Panel */}
-        <aside className="left-panel">
+      <main className={`main-content ${activeMobileTab === 'console' ? 'mobile-hidden' : ''}`}>
+        {/* Left Panel - Chat */}
+        <aside className={`left-panel ${activeMobileTab === 'chat' ? 'mobile-visible' : 'mobile-hidden'}`}>
           <span className="section-label">Chat</span>
           <textarea
             ref={textareaRef}
@@ -699,33 +819,39 @@ export default function HomePage() {
           </button>
 
           {/* History Tab List */}
-          <HistoryTabList
-            tabs={tabs}
-            activeTabId={activeTabId}
-            onTabSelect={handleTabSelect}
-            onTabDelete={handleTabDelete}
-          />
+          {/* History Tab List */}
+          <div className="desktop-only" style={{ width: '100%' }}>
+            <HistoryTabList
+              tabs={tabs}
+              activeTabId={activeTabId}
+              onTabSelect={handleTabSelect}
+              onTabDelete={handleTabDelete}
+            />
+          </div>
 
           {/* Scene Node Tree (inside active tab) */}
-          {activeTab && (
-            <div className="scene-tree-section">
-              <span className="section-label">Scene History</span>
-              <SceneNodeTree
-                nodes={activeTab.nodes}
-                activeNodeId={activeTab.activeNodeId}
-                onNodeSelect={handleNodeSelect}
-                onNodeDelete={handleNodeDelete}
-                onNodeRetry={handleNodeRetry}
-              />
-            </div>
-          )}
+          {
+            activeTab && (
+              <div className="scene-tree-section">
+                <span className="section-label">Scene History</span>
+                <SceneNodeTree
+                  nodes={activeTab.nodes}
+                  activeNodeId={activeTab.activeNodeId}
+                  onNodeSelect={handleNodeSelect}
+                  onNodeDelete={handleNodeDelete}
+                  onNodeRetry={handleNodeRetry}
+                  onNodeEdit={handleNodeEdit}
+                />
+              </div>
+            )
+          }
         </aside>
 
-        {/* Right Panel */}
-        <section className="right-panel">
+        {/* Right Panel - Preview */}
+        <section className={`right-panel ${activeMobileTab === 'preview' ? 'mobile-visible' : 'mobile-hidden'}`}>
           <div className="preview-header">
             <span className="preview-title">
-              <span className="preview-title-bracket">[Preview]</span> {currentSceneName}
+              <span className="preview-title-bracket">[PREVIEW]</span> {currentSceneName}
             </span>
             <div className="preview-meta">
               <span>Status: {status === "ready" ? "—" : getStatusText()}</span>
@@ -745,7 +871,7 @@ export default function HomePage() {
               {currentVideoUrl ? (
                 <video
                   className="preview-video"
-                  src={`${backendUrl}${currentVideoUrl}?t=${Date.now()}`}
+                  src={`${backendUrl}${currentVideoUrl}`}
                   controls
                   autoPlay
                   loop
@@ -774,44 +900,52 @@ export default function HomePage() {
         </section>
       </main>
 
-      {/* Bottom Dock - Fixed 40% */}
-      <div className="dock" ref={dockRef}>
+      {/* Bottom Dock - Fixed 40% (Desktop) / Full Page Tab (Mobile) */}
+      <div className={`dock ${activeMobileTab === 'console' ? 'mobile-visible' : 'mobile-hidden'}`} ref={dockRef}>
         <div className="dock-split">
           {/* Code Panel */}
           <div className="dock-panel dock-panel--code">
             <div className="dock-panel-header">
               <span className="dock-panel-title">CODE</span>
               <div className="dock-controls">
-                <button className="dock-btn" onClick={handleCopyCode} disabled={!currentCode}>
-                  Copy
+                <button className="dock-btn" onClick={handleCopyCode} disabled={!currentCode} title="Copy Code">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                  </svg>
                 </button>
-                <button className="dock-btn" onClick={handleDownloadCode} disabled={!currentCode}>
-                  Download
-                </button>
-                <button
-                  className={`dock-btn ${wrapCode ? "dock-btn--active" : ""}`}
-                  onClick={() => setWrapCode(!wrapCode)}
-                >
-                  Wrap
+                <button className="dock-btn" onClick={handleDownloadCode} disabled={!currentCode} title="Download Code">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="7 10 12 15 17 10" />
+                    <line x1="12" y1="15" x2="12" y2="3" />
+                  </svg>
                 </button>
                 <div className="dock-btn-group">
                   <button
                     className="dock-btn"
                     onClick={() => setFontSize(Math.max(10, fontSize - 1))}
+                    title="Decrease Font Size"
                   >
-                    A-
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
                   </button>
                   <button
                     className="dock-btn"
                     onClick={() => setFontSize(Math.min(20, fontSize + 1))}
+                    title="Increase Font Size"
                   >
-                    A+
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="12" y1="5" x2="12" y2="19" />
+                      <line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
                   </button>
                 </div>
               </div>
             </div>
             <div
-              className={`dock-content ${!wrapCode ? "dock-content--nowrap" : ""}`}
+              className="dock-content"
               style={{ fontSize, overflow: "scroll", flex: "1 1 0", minHeight: 0, maxHeight: "100%" }}
             >
               {currentCode ? (
@@ -819,13 +953,20 @@ export default function HomePage() {
                   language="python"
                   style={vscDarkPlus}
                   showLineNumbers={true}
-                  wrapLines={wrapCode}
+                  wrapLines={true}
                   customStyle={{
                     margin: 0,
                     padding: "12px",
                     background: "transparent",
                     fontSize: `${fontSize}px`,
-                    minWidth: wrapCode ? "auto" : "max-content",
+                    lineHeight: "1.5",
+                    minWidth: "auto",
+                  }}
+                  codeTagProps={{
+                    style: {
+                      fontSize: "inherit",
+                      lineHeight: "inherit"
+                    }
                   }}
                   lineNumberStyle={{
                     minWidth: "3em",
@@ -857,6 +998,89 @@ export default function HomePage() {
       {/* Copy feedback toast */}
       <div className={`copy-feedback ${copyFeedback ? "copy-feedback--visible" : ""}`}>
         Copied to clipboard!
+      </div>
+
+      {/* Mobile Bottom Navigation */}
+      <nav className="mobile-bottom-nav mobile-only">
+        <button
+          className={`nav-item ${activeMobileTab === 'chat' ? 'active' : ''}`}
+          onClick={() => setActiveMobileTab('chat')}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+          </svg>
+          Chat
+        </button>
+        <button
+          className={`nav-item ${activeMobileTab === 'preview' ? 'active' : ''}`}
+          onClick={() => setActiveMobileTab('preview')}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <polygon points="5 3 19 12 5 21 5 3" />
+          </svg>
+          Preview
+        </button>
+        <button
+          className={`nav-item ${activeMobileTab === 'console' ? 'active' : ''}`}
+          onClick={() => setActiveMobileTab('console')}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <polyline points="4 17 10 11 4 5" />
+            <line x1="12" y1="19" x2="20" y2="19" />
+          </svg>
+          Console
+        </button>
+      </nav>
+
+      {/* Mobile Side Drawer */}
+      <div className={`side-drawer-backdrop ${isSidebarOpen ? 'open' : ''}`} onClick={() => setIsSidebarOpen(false)} />
+      <div className={`side-drawer ${isSidebarOpen ? 'open' : ''}`}>
+        <div className="drawer-header">
+          <span className="drawer-title">Menu</span>
+          <button className="btn-close" onClick={() => setIsSidebarOpen(false)}>×</button>
+        </div>
+        <div className="drawer-content">
+          <button className="btn-new-scene" onClick={() => { handleCreateNewTab(); setIsSidebarOpen(false); }} style={{ width: '100%', marginBottom: '16px', justifyContent: 'center' }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            New Scene
+          </button>
+          <div className="drawer-section">
+            <label>Model</label>
+            <select value={selectedModel} onChange={(e) => setSelectedModel(e.target.value)}>
+              {MODELS.map(model => (
+                <option key={model} value={model}>{model}</option>
+              ))}
+            </select>
+          </div>
+          <div className="drawer-section">
+            <label>Resolution</label>
+            <select value={resolution} onChange={(e) => setResolution(e.target.value)}>
+              {Object.keys(RESOLUTION_PRESETS).map(res => (
+                <option key={res} value={res}>{res}</option>
+              ))}
+            </select>
+          </div>
+          <div className="drawer-section">
+            <label>FPS</label>
+            <select value={fps} onChange={(e) => setFps(parseInt(e.target.value, 10))}>
+              {FPS_OPTIONS.map(f => (
+                <option key={f} value={f}>{f} FPS</option>
+              ))}
+            </select>
+          </div>
+          <div className="drawer-section">
+            <label>Projects</label>
+            <HistoryTabList
+              tabs={tabs}
+              activeTabId={activeTabId}
+              onTabSelect={(id) => { handleTabSelect(id); setIsSidebarOpen(false); }}
+              onTabDelete={handleTabDelete}
+            />
+          </div>
+        </div>
       </div>
     </div>
   );

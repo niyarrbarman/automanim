@@ -13,8 +13,6 @@ from app.core.config import settings  # noqa: E402
 
 def main():
     print("[smoke] Provider:", settings.LLM_PROVIDER)
-    print("[smoke] Model ID (config):", settings.LLM_MODEL_ID)
-    print("[smoke] HF_TOKEN set:", bool(settings.HF_TOKEN or os.environ.get('HF_TOKEN')))
     if settings.LLM_PROVIDER == 'ollama':
         print("[smoke] OLLAMA_HOST:", settings.OLLAMA_HOST)
         print("[smoke] OLLAMA_MODEL:", settings.OLLAMA_MODEL)
@@ -33,9 +31,7 @@ def main():
     )
 
     print("[smoke] LLMService loaded model id:", getattr(svc, "_model_id", None))
-    if settings.LLM_PROVIDER == 'transformers':
-        print("[smoke] Pipe ready:", bool(getattr(svc, "_pipe", None)))
-    elif settings.LLM_PROVIDER == 'ollama':
+    if settings.LLM_PROVIDER == 'ollama':
         print("[smoke] Using Ollama model:", getattr(svc, "_ollama_model", None))
     print("[smoke] Generating...")
     import asyncio

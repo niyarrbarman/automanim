@@ -10,16 +10,11 @@ class Settings(BaseSettings):
     WORK_ROOT: str = str(BASE_DIR / "workdir")
 
     # LLM settings
-    LLM_PROVIDER: str = Field("ollama", description="ollama|transformers|llama_cpp|http")
+    LLM_PROVIDER: str = Field("ollama", description="ollama|llama_cpp|http")
     # Ollama
     OLLAMA_HOST: str = Field("http://localhost:11434", description="Ollama server host")
     OLLAMA_MODEL: str = Field("gpt-oss:120b-cloud", description="Ollama model name")
-    LLM_MODEL_ID: str = Field(
-        "prithivMLmods/Pyxidis-Manim-CodeGen-1.7B",
-        description="Hugging Face model id for transformers",
-    )
     LLM_MODEL_PATH: Optional[str] = None  # Path to GGUF model for llama.cpp (optional)
-    HF_TOKEN: Optional[str] = None  # Hugging Face token for private/model downloads
     LLM_HTTP_ENDPOINT: Optional[str] = None  # Optional HTTP endpoint for generation
     LLM_MAX_TOKENS: int = 2048
     LLM_TEMPERATURE: float = 0.2

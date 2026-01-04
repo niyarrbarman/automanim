@@ -8,6 +8,7 @@ type Props = {
     onNodeSelect: (nodeId: string) => void;
     onNodeDelete: (nodeId: string) => void;
     onNodeRetry: (nodeId: string) => void;
+    onNodeEdit: (nodeId: string) => void;
 };
 
 function getStatusDot(status: SceneNode["status"]) {
@@ -29,7 +30,7 @@ function truncatePrompt(prompt: string, maxLength: number = 30): string {
     return prompt.slice(0, maxLength - 3) + "...";
 }
 
-export default function SceneNodeTree({ nodes, activeNodeId, onNodeSelect, onNodeDelete, onNodeRetry }: Props) {
+export default function SceneNodeTree({ nodes, activeNodeId, onNodeSelect, onNodeDelete, onNodeRetry, onNodeEdit }: Props) {
     const handleDelete = (e: React.MouseEvent, nodeId: string) => {
         e.stopPropagation();
         if (window.confirm("Delete this iteration and all following updates?")) {
@@ -42,6 +43,11 @@ export default function SceneNodeTree({ nodes, activeNodeId, onNodeSelect, onNod
         if (window.confirm("Retry this prompt? This will delete all following updates and regenerate.")) {
             onNodeRetry(nodeId);
         }
+    };
+
+    const handleEdit = (e: React.MouseEvent, nodeId: string) => {
+        e.stopPropagation();
+        onNodeEdit(nodeId);
     };
 
     if (nodes.length === 0) {
@@ -96,6 +102,16 @@ export default function SceneNodeTree({ nodes, activeNodeId, onNodeSelect, onNod
                         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <polyline points="23 4 23 10 17 10"></polyline>
                             <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                        </svg>
+                    </div>
+                    <div
+                        className="node-edit-btn"
+                        onClick={(e) => handleEdit(e, item.node.id)}
+                        title="Edit this prompt"
+                    >
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                         </svg>
                     </div>
                     <div

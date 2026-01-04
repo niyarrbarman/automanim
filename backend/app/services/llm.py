@@ -18,14 +18,10 @@ class LLMService:
     def __init__(self) -> None:
         self.provider = settings.LLM_PROVIDER
         self._llm = None
-        self._tokenizer = None
-        self._pipe = None
         self._model_id = None
         self._ollama_model = None
 
-        if self.provider == "transformers":
-            self._init_transformers()
-        elif self.provider == "ollama":
+        if self.provider == "ollama":
             self._init_ollama()
         elif self.provider == "llama_cpp":
             self._init_llama_cpp()
@@ -33,45 +29,6 @@ class LLMService:
             # Expect settings.LLM_HTTP_ENDPOINT to be set
             pass
 
-    def _init_transformers(self) -> None:
-        try:
-            import transformers
-            from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
-            from huggingface_hub import login as hf_login
-
-            model_id = os.environ.get("LLM_MODEL_ID") or settings.LLM_MODEL_ID
-            if not model_id:
-                model_id = "prithivMLmods/Pyxidis-Manim-CodeGen-1.7B"
-            self._model_id = model_id
-
-            token = settings.HF_TOKEN or os.environ.get("HF_TOKEN")
-            if token:
-                try:
-                    hf_login(token=token)
-                except Exception:
-                    pass
-
-            # Try to load the model with CPU fallback
-            # We avoid bitsandbytes here for broader portability
-            print(f"[LLM] Initializing transformers model: {model_id}")
-            self._tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
-            self._llm = AutoModelForCausalLM.from_pretrained(
-                model_id,
-                torch_dtype="auto",
-                device_map="auto" if os.environ.get("ACCELERATE_DEVICE_MAP", "") else None,
-                trust_remote_code=True,
-            )
-            self._pipe = pipeline(
-                "text-generation",
-                model=self._llm,
-                tokenizer=self._tokenizer,
-                # generation config can be overridden per-call
-            )
-            print("[LLM] Transformers pipeline created.")
-        except Exception as e:
-            print("[LLM] transformers init failed:", repr(e))
-            self._llm = None
-            self._pipe = None
 
     def _init_ollama(self) -> None:
         # Set host for python ollama client and record model
@@ -103,11 +60,7 @@ class LLMService:
             prompt = self._build_from_messages(chat_messages)
         else:
             prompt = self._build_prompt(system_prompt, user_prompt)
-        if self.provider == "transformers":
-            if self._pipe is None:
-                return None
-            return await asyncio.to_thread(self._completion_transformers, prompt)
-        elif self.provider == "ollama":
+        if self.provider == "ollama":
             if messages is not None:
                 return await asyncio.to_thread(self._completion_ollama_messages, chat_messages)
             return await asyncio.to_thread(self._completion_ollama, system_prompt, user_prompt)
@@ -119,22 +72,6 @@ class LLMService:
             return await self._completion_http(prompt)
         return None
 
-    def _completion_transformers(self, prompt: str) -> Optional[str]:
-        try:
-            outputs = self._pipe(
-                prompt,
-                max_new_tokens=settings.LLM_MAX_TOKENS,
-                do_sample=True,
-                temperature=max(0.0, min(1.0, settings.LLM_TEMPERATURE)),
-                eos_token_id=self._tokenizer.eos_token_id if self._tokenizer else None,
-                repetition_penalty=1.05,
-            )
-            if not outputs:
-                return None
-            text = outputs[0]["generated_text"][len(prompt):]
-            return text
-        except Exception:
-            return None
 
     def _completion_ollama(self, system_prompt: str, user_prompt: str) -> Optional[str]:
         try:
@@ -158,14 +95,6 @@ class LLMService:
             return None
 
     def _build_from_messages(self, messages: List[Dict[str, str]]) -> str:
-        tok = getattr(self, "_tokenizer", None)
-        try:
-            if tok and hasattr(tok, "apply_chat_template"):
-                rendered = tok.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-                if isinstance(rendered, str) and len(rendered) > 0:
-                    return rendered
-        except Exception:
-            pass
         # Fallback to naive concatenation
         parts = []
         for m in messages:
@@ -191,20 +120,7 @@ class LLMService:
             return None
 
     def _build_prompt(self, system_prompt: str, user_prompt: str) -> str:
-        # Prefer chat template if available for better adherence to Llama 3.1 format
-        tok = getattr(self, "_tokenizer", None)
-        try:
-            if tok and hasattr(tok, "apply_chat_template"):
-                messages = [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt},
-                ]
-                rendered = tok.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-                if isinstance(rendered, str) and len(rendered) > 0:
-                    return rendered
-        except Exception:
-            pass
-        # Fallback to simple instruct-style prompt
+        # Simple instruct-style prompt
         return PROMPT_TEMPLATE.format(system=system_prompt, user=user_prompt)
 
     def _completion_llama_cpp(self, prompt: str) -> Optional[str]:
@@ -234,3 +150,6 @@ class LLMService:
                     return data.get("text")
         except Exception:
             return None
+
+# Create singleton instance
+llm_service = LLMService()
